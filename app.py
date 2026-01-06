@@ -88,6 +88,27 @@ styles = {
 }
 
 # App layout
+app.index_string = '''
+<!DOCTYPE html>
+<html>
+    <head>
+        {%metas%}
+        <title>{%title%}</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        {%favicon%}
+        {%css%}
+    </head>
+    <body>
+        {%app_entry%}
+        <footer>
+            {%config%}
+            {%scripts%}
+            {%renderer%}
+        </footer>
+    </body>
+</html>
+'''
+
 app.layout = html.Div([
     # Hidden stores for simulation data
     dcc.Store(id='simulation-data'),
@@ -106,90 +127,93 @@ app.layout = html.Div([
     html.Div([
         # Control panel
         html.Div([
-            html.Div('Quarter Car Model', style=styles['title']),
+            html.H1('Quarter Car Model', className='app-title'),
             
-            # Suspension stiffness slider
+            # Sliders grid (responsive 2-column on tablet)
             html.Div([
-                html.Div('Suspension Stiffness Ks [N/m]', style=styles['slider_label']),
-                dcc.Slider(
-                    id='slider-ks',
-                    min=10000,
-                    max=100000,
-                    step=1000,
-                    value=48000,
-                    marks={10000: '10k', 50000: '50k', 100000: '100k'},
-                    tooltip={'placement': 'bottom', 'always_visible': True}
-                )
-            ], style=styles['slider_container']),
-            
-            # Damping slider
-            html.Div([
-                html.Div('Damping Cs [Ns/m]', style=styles['slider_label']),
-                dcc.Slider(
-                    id='slider-cs',
-                    min=100,
-                    max=5000,
-                    step=100,
-                    value=1000,
-                    marks={100: '100', 2500: '2500', 5000: '5000'},
-                    tooltip={'placement': 'bottom', 'always_visible': True}
-                )
-            ], style=styles['slider_container']),
-            
-            # Vehicle speed slider
-            html.Div([
-                html.Div('Vehicle Speed [m/s]', style=styles['slider_label']),
-                dcc.Slider(
-                    id='slider-vel',
-                    min=0.5,
-                    max=5,
-                    step=0.1,
-                    value=2,
-                    marks={0.5: '0.5', 2.5: '2.5', 5: '5'},
-                    tooltip={'placement': 'bottom', 'always_visible': True}
-                )
-            ], style=styles['slider_container']),
-            
-            # Tire stiffness slider
-            html.Div([
-                html.Div('Tire Stiffness Kt [N/m]', style=styles['slider_label']),
-                dcc.Slider(
-                    id='slider-kt',
-                    min=50000,
-                    max=500000,
-                    step=10000,
-                    value=200000,
-                    marks={50000: '50k', 250000: '250k', 500000: '500k'},
-                    tooltip={'placement': 'bottom', 'always_visible': True}
-                )
-            ], style=styles['slider_container']),
+                # Suspension stiffness slider
+                html.Div([
+                    html.Label('Suspension Stiffness Ks [N/m]', className='slider-label'),
+                    dcc.Slider(
+                        id='slider-ks',
+                        min=10000,
+                        max=100000,
+                        step=1000,
+                        value=48000,
+                        marks={10000: '10k', 50000: '50k', 100000: '100k'},
+                        tooltip={'placement': 'bottom', 'always_visible': True}
+                    )
+                ], className='slider-container'),
+                
+                # Damping slider
+                html.Div([
+                    html.Label('Damping Cs [Ns/m]', className='slider-label'),
+                    dcc.Slider(
+                        id='slider-cs',
+                        min=100,
+                        max=5000,
+                        step=100,
+                        value=1000,
+                        marks={100: '100', 2500: '2500', 5000: '5000'},
+                        tooltip={'placement': 'bottom', 'always_visible': True}
+                    )
+                ], className='slider-container'),
+                
+                # Vehicle speed slider
+                html.Div([
+                    html.Label('Vehicle Speed [m/s]', className='slider-label'),
+                    dcc.Slider(
+                        id='slider-vel',
+                        min=0.5,
+                        max=5,
+                        step=0.1,
+                        value=2,
+                        marks={0.5: '0.5', 2.5: '2.5', 5: '5'},
+                        tooltip={'placement': 'bottom', 'always_visible': True}
+                    )
+                ], className='slider-container'),
+                
+                # Tire stiffness slider
+                html.Div([
+                    html.Label('Tire Stiffness Kt [N/m]', className='slider-label'),
+                    dcc.Slider(
+                        id='slider-kt',
+                        min=50000,
+                        max=500000,
+                        step=10000,
+                        value=200000,
+                        marks={50000: '50k', 250000: '250k', 500000: '500k'},
+                        tooltip={'placement': 'bottom', 'always_visible': True}
+                    )
+                ], className='slider-container'),
+            ], className='sliders-grid'),
             
             # Start button
             html.Button(
-                'Start / Restart',
+                '▶ Start Simulation',
                 id='start-button',
-                style=styles['button']
+                className='start-button'
             ),
             
             # Status display
-            html.Div(id='status-display', style=styles['status'])
+            html.Div(id='status-display', className='status-display', children='Ready to simulate')
             
-        ], style=styles['control_panel']),
+        ], className='control-panel'),
         
         # Plot container
         html.Div([
             # Animation plot
             html.Div([
-                dcc.Graph(id='animation-graph', style={'height': '100%'})
-            ], style=styles['plot_panel']),
+                dcc.Graph(id='animation-graph', style={'height': '100%'}, config={'displayModeBar': False})
+            ], className='plot-panel'),
             
             # Displacement plot
             html.Div([
-                dcc.Graph(id='displacement-graph', style={'height': '100%'})
-            ], style=styles['plot_panel'])
-        ], style=styles['plot_container'])
+                dcc.Graph(id='displacement-graph', style={'height': '100%'}, config={'displayModeBar': False})
+            ], className='plot-panel')
+        ], className='plot-container')
         
-    ], style=styles['container'])
+    ], className='app-container')
 ])
 
 

@@ -1,0 +1,258 @@
+/* Quarter Car Model - Responsive Styles */
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: #f5f5f5;
+    overflow-x: hidden;
+}
+
+/* Main Container */
+.app-container {
+    display: flex;
+    flex-direction: row;
+    min-height: 100vh;
+    width: 100%;
+}
+
+/* Control Panel */
+.control-panel {
+    width: 320px;
+    min-width: 280px;
+    padding: 20px;
+    background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+    border-right: 1px solid #e0e0e0;
+    overflow-y: auto;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+}
+
+.app-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 24px;
+    color: #1a1a2e;
+    text-align: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Slider Containers */
+.slider-container {
+    margin-bottom: 28px;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 12px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.slider-container:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.slider-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #444;
+    margin-bottom: 12px;
+    display: block;
+}
+
+/* Start Button */
+.start-button {
+    width: 100%;
+    padding: 16px 24px;
+    font-size: 1rem;
+    font-weight: 700;
+    color: white;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    margin-top: 20px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.start-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+}
+
+.start-button:active {
+    transform: translateY(0);
+}
+
+/* Status Display */
+.status-display {
+    margin-top: 16px;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    border-radius: 8px;
+    font-size: 0.875rem;
+    color: #2e7d32;
+    border-left: 4px solid #4caf50;
+}
+
+/* Plot Container */
+.plot-container {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    padding: 16px;
+    gap: 16px;
+    min-width: 0;
+}
+
+.plot-panel {
+    flex: 1;
+    min-width: 0;
+    background: white;
+    border-radius: 16px;
+    padding: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* Graph responsiveness */
+.dash-graph {
+    height: 100% !important;
+}
+
+/* ======================= */
+/* TABLET STYLES (≤1024px) */
+/* ======================= */
+@media screen and (max-width: 1024px) {
+    .app-container {
+        flex-direction: column;
+    }
+    
+    .control-panel {
+        width: 100%;
+        min-width: unset;
+        border-right: none;
+        border-bottom: 1px solid #e0e0e0;
+        padding: 16px;
+        max-height: none;
+    }
+    
+    .app-title {
+        font-size: 1.25rem;
+        margin-bottom: 16px;
+    }
+    
+    /* Two-column slider layout on tablet */
+    .sliders-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+    
+    .slider-container {
+        margin-bottom: 0;
+        padding: 10px;
+    }
+    
+    .plot-container {
+        flex-direction: column;
+        padding: 12px;
+        gap: 12px;
+    }
+    
+    .plot-panel {
+        min-height: 350px;
+        padding: 8px;
+    }
+    
+    .start-button {
+        margin-top: 16px;
+        padding: 14px 20px;
+    }
+}
+
+/* ======================= */
+/* MOBILE STYLES (≤640px)  */
+/* ======================= */
+@media screen and (max-width: 640px) {
+    .control-panel {
+        padding: 12px;
+    }
+    
+    .app-title {
+        font-size: 1.125rem;
+        margin-bottom: 12px;
+    }
+    
+    /* Single column on mobile */
+    .sliders-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .slider-container {
+        padding: 10px;
+    }
+    
+    .slider-label {
+        font-size: 0.8rem;
+        margin-bottom: 8px;
+    }
+    
+    .plot-container {
+        padding: 8px;
+        gap: 10px;
+    }
+    
+    .plot-panel {
+        min-height: 280px;
+        border-radius: 12px;
+        padding: 6px;
+    }
+    
+    .start-button {
+        padding: 14px 16px;
+        font-size: 0.9rem;
+        border-radius: 10px;
+    }
+    
+    .status-display {
+        font-size: 0.75rem;
+        padding: 10px 12px;
+    }
+    
+    /* Adjust Dash slider marks for mobile */
+    .rc-slider-mark-text {
+        font-size: 10px !important;
+    }
+}
+
+/* Small mobile (≤400px) */
+@media screen and (max-width: 400px) {
+    .plot-panel {
+        min-height: 240px;
+    }
+    
+    .app-title {
+        font-size: 1rem;
+    }
+}
+
+/* Touch-friendly slider adjustments */
+@media (hover: none) and (pointer: coarse) {
+    .rc-slider-handle {
+        width: 24px !important;
+        height: 24px !important;
+        margin-top: -10px !important;
+    }
+    
+    .rc-slider-rail,
+    .rc-slider-track {
+        height: 8px !important;
+    }
+}

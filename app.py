@@ -216,7 +216,7 @@ app.layout = html.Div([
                     id="loading-animation",
                     type="default",
                     children=[
-                        dcc.Graph(id='animation-graph', style={'height': 'calc(100% - 60px)'}, config={'displayModeBar': False}),
+                        dcc.Graph(id='animation-graph', style={'height': 'calc(100% - 60px)'}, config={'displayModeBar': False, 'staticPlot': True}),
                         html.Div(id='loading-output', style={'display': 'none'}) # Dummy output to trigger loader
                     ],
                     custom_spinner=html.H2(["Computing Simulation...", html.Br(), "Please Wait"], style={'marginTop': '100px', 'color': '#333'})
@@ -449,7 +449,7 @@ app.clientside_callback(
             'layout': {
                 'title': frame.layout.title,
                 'xaxis': frame.layout.xaxis,
-                'yaxis': {'range': [-0.1, 1.5], 'title': 'z [m]'},
+                'yaxis': {'range': [-0.1, 1.15], 'title': 'z [m]'},
                 'margin': {'l': 50, 'r': 50, 't': 50, 'b': 50},
                 'height': 500,
                 'uirevision': 'constant'

@@ -142,7 +142,7 @@ def create_animation_frame(result: SimulationResult, frame_idx: int) -> go.Figur
     """
     i = frame_idx
     x_inst = result.lon[i]
-    l_win = 2  # Window length
+    l_win = 2.5  # Window length
     
     fig = go.Figure()
     
@@ -292,10 +292,10 @@ def create_animation_frame(result: SimulationResult, frame_idx: int) -> go.Figur
             scaleanchor='y',
             scaleratio=1
         ),
-        yaxis=dict(
-            range=[-0.1, -0.1 + l_win],
-            title='z [m]'
-        ),
+        # yaxis=dict(
+        #     range=[-0.1, -0.1 + l_win],
+        #     title='z [m]'
+        # ),
         showlegend=False,
         margin=dict(l=50, r=50, t=50, b=50),
         plot_bgcolor='white',

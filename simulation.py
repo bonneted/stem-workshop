@@ -99,7 +99,7 @@ def run_simulation(params: SimulationParams) -> SimulationResult:
     # Time parameters
     playback_speed = .5  # Playback speed multiplier (0.5 = 2x slow-mo)
     tF = xF / vel        # Time required to cover xF at given speed
-    fR = 30 / playback_speed  # Target 30 fps for smooth animation
+    fR = 20 / playback_speed  # Target 20 fps for mobile performance
     num_frames = int(tF * fR)
     time = np.linspace(0, tF, num_frames)
     

@@ -121,7 +121,7 @@ app.layout = html.Div([
     # Animation interval component
     dcc.Interval(
         id='animation-interval',
-        interval=ANIMATION_INTERVAL_MS,
+        interval=60, # 60ms = ~16fps, safer for mobile
         n_intervals=0,
         disabled=True
     ),

@@ -347,21 +347,13 @@ def start_simulation(n_clicks, ks, cs, vel, kt, is_first_run):
     
     status = f"Running simulation... Ks={ks}, Cs={cs}, Kt={kt}, v={vel}"
     
-    # On first run: Hide displacement and player controls during initial animation
-    # On subsequent runs: Keep them visible
-    # Note: first-run stays True until animation completes
-    if is_first_run:
-        return (data, frames, 0, True, False, status, "loaded", 
-                {'visibility': 'hidden', 'height': '100%'}, 
-                num_frames - 1, 0,
-                {'display': 'none'},
-                True)  # Keep first-run as True until animation completes
-    else:
-        return (data, frames, 0, True, False, status, "loaded", 
-                {'visibility': 'visible', 'height': '100%'}, 
-                num_frames - 1, 0,
-                {'display': 'flex', 'alignItems': 'center', 'padding': '10px', 'marginTop': '5px'},
-                False)
+    # Always reset first-run to True for each new simulation
+    # This ensures controls are hidden during the initial animation
+    return (data, frames, 0, True, False, status, "loaded", 
+            {'visibility': 'hidden', 'height': '100%'}, 
+            num_frames - 1, 0,
+            {'display': 'none'},
+            True)  # Always reset first-run to True for new simulation
 
 
 # Clientside callback for frame index advancement (no server round-trip!)

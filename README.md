@@ -68,14 +68,15 @@ railway up
 ## Project Structure
 
 ```
-python/
-├── app.py              # Main Dash web application
-├── simulation.py       # Quarter car physics (state-space model)
-├── plotting.py         # Plotly visualization functions
-├── requirements.txt    # Python dependencies
-├── Procfile            # Railway/Heroku deployment config
-├── runtime.txt         # Python version specification
-└── README.md           # This file
+matlab/             # MATLAB files
+
+app.py              # Main Dash web application
+simulation.py       # Quarter car physics (state-space model)
+plotting.py         # Plotly visualization functions
+requirements.txt    # Python dependencies
+Procfile            # Railway/Heroku deployment config
+runtime.txt         # Python version specification
+README.md           # This file
 ```
 
 ## Physics Model

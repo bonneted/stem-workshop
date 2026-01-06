@@ -278,7 +278,7 @@ def deserialize_result(data: dict) -> SimulationResult:
     Output('animation-interval', 'disabled', allow_duplicate=True),
     Output('status-display', 'children'),
     Output('loading-output', 'children'),
-    Output('displacement-content', 'style', allow_duplicate=True),
+    Output('displacement-content', 'style'),
     Input('start-button', 'n_clicks'),
     State('slider-ks', 'value'),
     State('slider-cs', 'value'),
@@ -325,36 +325,41 @@ def start_simulation(n_clicks, ks, cs, vel, kt):
     return data, frames, 0, True, False, status, "loaded", {'visibility': 'hidden', 'height': '100%'}
 
 
-@callback(
+# Clientside callback for frame index advancement (no server round-trip!)
+app.clientside_callback(
+    """
+    function(n_intervals, current_frame, sim_data, is_running) {
+        // Return [frame_index, is_running, interval_disabled]
+        if (!is_running || !sim_data) {
+            return [window.dash_clientside.no_update, window.dash_clientside.no_update, window.dash_clientside.no_update];
+        }
+        
+        var num_frames = sim_data.time.length;
+        var next_frame = current_frame + 1;
+        
+        if (next_frame >= num_frames) {
+            // Animation complete
+            return [num_frames - 1, false, true];
+        }
+        
+        return [next_frame, true, false];
+    }
+    """,
     Output('frame-index', 'data'),
     Output('is-running', 'data'),
     Output('animation-interval', 'disabled'),
     Input('animation-interval', 'n_intervals'),
     State('frame-index', 'data'),
     State('simulation-data', 'data'),
-    State('is-running', 'data'),
-    prevent_initial_call=True
+    State('is-running', 'data')
 )
-def update_frame_index(n_intervals, current_frame, sim_data, is_running):
-    """Advance frame index during animation."""
-    if not is_running or sim_data is None:
-        return no_update, no_update, no_update
-    
-    num_frames = len(sim_data['time'])
-    next_frame = current_frame + 1
-    
-    if next_frame >= num_frames:
-        # Animation complete
-        return num_frames - 1, False, True
-    
-    return next_frame, True, False
 
 
-# Clientside callback for smooth animation
+# Clientside callback for smooth animation figure update
 app.clientside_callback(
     """
     function(frame_idx, frames_data) {
-        if (!frames_data || frame_idx >= frames_data.length) {
+        if (!frames_data || frame_idx === null || frame_idx >= frames_data.length) {
             return window.dash_clientside.no_update;
         }
         
@@ -381,7 +386,7 @@ app.clientside_callback(
 
 @callback(
     Output('displacement-graph', 'figure'),
-    Output('displacement-content', 'style'),
+    Output('displacement-content', 'style', allow_duplicate=True),
     Input('is-running', 'data'),
     State('simulation-data', 'data'),
     prevent_initial_call=True

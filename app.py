@@ -115,14 +115,18 @@ app.layout = html.Div([
     dcc.Store(id='frame-index', data=0),
     dcc.Store(id='is-running', data=False),
     dcc.Store(id='first-run', data=True),  # Track if this is the first simulation run
+    dcc.Store(id='animation-start-time', data=None),  # Track animation start timestamp
+    dcc.Store(id='animation-duration-ms', data=3000),  # Total animation duration in ms
+    dcc.Store(id='base-duration-ms', data=3000),  # Base duration before speed factor
     
     # Animation frames store
     dcc.Store(id='animation-frames'),
+    dcc.Store(id='displacement-base-figure'),  # Base displacement plot (without markers)
     
-    # Animation interval component
+    # Animation interval component - fixed 30ms (~33fps) tick rate
     dcc.Interval(
         id='animation-interval',
-        interval=60, # 60ms = ~16fps, safer for mobile
+        interval=30,
         n_intervals=0,
         disabled=True
     ),
@@ -169,10 +173,10 @@ app.layout = html.Div([
                     dcc.Slider(
                         id='slider-vel',
                         min=0.5,
-                        max=5,
+                        max=3,
                         step=0.1,
-                        value=2,
-                        marks={0.5: '0.5', 2.5: '2.5', 5: '5'},
+                        value=1.5,
+                        marks={0.5: '0.5', 1.5: '1.5', 3: '3'},
                         tooltip={'placement': 'bottom', 'always_visible': True}
                     )
                 ], className='slider-container'),
@@ -215,16 +219,31 @@ app.layout = html.Div([
                         dcc.Graph(id='animation-graph', style={'height': 'calc(100% - 60px)'}, config={'displayModeBar': False}),
                         html.Div(id='loading-output', style={'display': 'none'}) # Dummy output to trigger loader
                     ],
-                    overlay_style={"visibility":"visible", "opacity": .5, "backgroundColor": "white"},
-                    custom_spinner=html.H2(["Computing Simulation...", html.Br(), "Please Wait"], style={'marginTop': '100px'})
+                    custom_spinner=html.H2(["Computing Simulation...", html.Br(), "Please Wait"], style={'marginTop': '100px', 'color': '#333'})
                 ),
                 # Player controls (hidden until animation completes)
                 html.Div([
+                    html.Div([
                     html.Button(
                         '▶',
                         id='play-pause-button',
-                        style={'width': '40px', 'minWidth': '40px', 'height': '40px', 'fontSize': '18px', 'marginRight': '0px', 'cursor': 'pointer', 'borderRadius': '8px', 'border': '1px solid #ccc', 'background': 'white', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'center'}
+                        style={'width': '40px', 'minWidth': '40px', 'height': '40px', 'fontSize': '18px', 'marginRight': '5px', 'cursor': 'pointer', 'borderRadius': '8px', 'border': '1px solid #ccc', 'background': 'white', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'center'}
                     ),
+                    # Video speed selector using RadioItems
+                    dcc.RadioItems(
+                        id='video-speed-dropdown',
+                        options=[
+                            {'label': '0.25x', 'value': 0.25},
+                            {'label': '0.5x', 'value': 0.5},
+                            {'label': '1x', 'value': 1},
+                            {'label': '2x', 'value': 2}
+                        ],
+                        value=1,
+                        inline=False,
+                        style={'marginTop': '10px'},
+                        labelStyle={'margin': '0 3px', 'fontSize': '13px', 'cursor': 'pointer'},
+                        inputStyle={'marginRight': '3px'}
+                    )]),
                     html.Div([
                         dcc.Slider(
                             id='time-slider',
@@ -236,7 +255,7 @@ app.layout = html.Div([
                             tooltip={'placement': 'bottom', 'always_visible': False},
                             updatemode='drag'
                         )
-                    ], style={'flex': '1', 'minWidth': '0', 'paddingTop': '20px'})
+                    ], style={'flex': '1', 'minWidth': '0', 'paddingTop': '10px'})
                 ], id='player-controls', style={'display': 'none'})
             ], className='plot-panel'),
             
@@ -294,6 +313,10 @@ def deserialize_result(data: dict) -> SimulationResult:
 @callback(
     Output('simulation-data', 'data'),
     Output('animation-frames', 'data'),
+    Output('displacement-base-figure', 'data'),
+    Output('base-duration-ms', 'data'),
+    Output('animation-duration-ms', 'data'),
+    Output('animation-start-time', 'data', allow_duplicate=True),
     Output('frame-index', 'data', allow_duplicate=True),
     Output('is-running', 'data', allow_duplicate=True),
     Output('animation-interval', 'disabled', allow_duplicate=True),
@@ -304,6 +327,7 @@ def deserialize_result(data: dict) -> SimulationResult:
     Output('time-slider', 'value', allow_duplicate=True),
     Output('player-controls', 'style'),
     Output('first-run', 'data'),
+    Output('video-speed-dropdown', 'value'),
     Input('start-button', 'n_clicks'),
     State('slider-ks', 'value'),
     State('slider-cs', 'value'),
@@ -315,7 +339,7 @@ def deserialize_result(data: dict) -> SimulationResult:
 def start_simulation(n_clicks, ks, cs, vel, kt, is_first_run):
     """Handle start button click - run simulation and pre-compute frames."""
     if n_clicks is None:
-        return no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update
+        return no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update
     
     # Create simulation parameters
     params = SimulationParams(
@@ -345,43 +369,66 @@ def start_simulation(n_clicks, ks, cs, vel, kt, is_first_run):
         }
         frames.append({'data': frame_data, 'layout': layout_update})
     
-    status = f"Running simulation... Ks={ks}, Cs={cs}, Kt={kt}, v={vel}"
+    # Pre-compute base displacement figure (without markers)
+    disp_fig = create_displacement_plot(result, current_time_idx=None)
+    disp_fig_data = json.loads(disp_fig.to_json())
+    
+    # Calculate animation duration (always start at 1x speed)
+    base_duration_ms = result.time[-1] * 1000  # Real-time duration
+    animation_duration_ms = base_duration_ms  # Start at 1x speed
+    
+    status = f"Simulation: v={vel} m/s, duration={base_duration_ms/1000:.1f}s"
     
     # Always reset first-run to True for each new simulation
     # This ensures controls are hidden during the initial animation
-    return (data, frames, 0, True, False, status, "loaded", 
+    # Use -1 as start_time to signal clientside callback to initialize it
+    return (data, frames, disp_fig_data, base_duration_ms, animation_duration_ms, -1,
+            0, True, False, status, "loaded", 
             {'visibility': 'hidden', 'height': '100%'}, 
             num_frames - 1, 0,
             {'display': 'none'},
-            True)  # Always reset first-run to True for new simulation
+            True,  # Always reset first-run to True for new simulation
+            1)  # Reset video speed to 1x
 
 
-# Clientside callback for frame index advancement (no server round-trip!)
+# Clientside callback for time-based frame advancement
 app.clientside_callback(
     """
-    function(n_intervals, current_frame, sim_data, is_running) {
-        // Return [frame_index, is_running, interval_disabled, slider_value]
+    function(n_intervals, start_time, duration_ms, sim_data, is_running) {
+        // Return [frame_index, start_time, is_running, interval_disabled, slider_value]
         if (!is_running || !sim_data) {
-            return [window.dash_clientside.no_update, window.dash_clientside.no_update, window.dash_clientside.no_update, window.dash_clientside.no_update];
+            return [window.dash_clientside.no_update, window.dash_clientside.no_update, window.dash_clientside.no_update, window.dash_clientside.no_update, window.dash_clientside.no_update];
         }
         
         var num_frames = sim_data.time.length;
-        var next_frame = current_frame + 1;
+        var now = Date.now();
         
-        if (next_frame >= num_frames) {
-            // Animation complete - stop and stay at last frame
-            return [num_frames - 1, false, true, num_frames - 1];
+        // Initialize start time if -1 (new animation)
+        if (start_time === -1 || start_time === null) {
+            start_time = now;
         }
         
-        return [next_frame, true, false, next_frame];
+        // Calculate elapsed time and corresponding frame
+        var elapsed = now - start_time;
+        var progress = Math.min(elapsed / duration_ms, 1.0);
+        var frame = Math.floor(progress * (num_frames - 1));
+        
+        if (frame >= num_frames - 1) {
+            // Animation complete - stop at last frame
+            return [num_frames - 1, start_time, false, true, num_frames - 1];
+        }
+        
+        return [frame, start_time, true, false, frame];
     }
     """,
     Output('frame-index', 'data'),
+    Output('animation-start-time', 'data'),
     Output('is-running', 'data'),
     Output('animation-interval', 'disabled'),
     Output('time-slider', 'value'),
     Input('animation-interval', 'n_intervals'),
-    State('frame-index', 'data'),
+    State('animation-start-time', 'data'),
+    State('animation-duration-ms', 'data'),
     State('simulation-data', 'data'),
     State('is-running', 'data')
 )
@@ -416,34 +463,73 @@ app.clientside_callback(
 )
 
 
-@callback(
+# Clientside callback for displacement plot marker update
+app.clientside_callback(
+    """
+    function(frame_idx, base_fig_data, sim_data) {
+        if (!base_fig_data || !sim_data || frame_idx === null) {
+            return window.dash_clientside.no_update;
+        }
+        
+        // Clone the base figure
+        var fig = JSON.parse(JSON.stringify(base_fig_data));
+        
+        // Add marker traces if frame_idx is valid
+        if (frame_idx >= 0 && frame_idx < sim_data.time.length) {
+            var current_time = sim_data.time[frame_idx];
+            var current_z_s = sim_data.z_s[frame_idx];
+            var current_z_u = sim_data.z_u[frame_idx];
+            
+            // Add sprung mass marker
+            fig.data.push({
+                x: [current_time],
+                y: [current_z_s],
+                mode: 'markers',
+                marker: {color: 'black', size: 12, symbol: 'circle'},
+                showlegend: false,
+                hoverinfo: 'skip'
+            });
+            
+            // Add unsprung mass marker
+            fig.data.push({
+                x: [current_time],
+                y: [current_z_u],
+                mode: 'markers',
+                marker: {color: 'black', size: 12, symbol: 'circle'},
+                showlegend: false,
+                hoverinfo: 'skip'
+            });
+        }
+        
+        return fig;
+    }
+    """,
     Output('displacement-graph', 'figure'),
+    Input('frame-index', 'data'),
+    State('displacement-base-figure', 'data'),
+    State('simulation-data', 'data')
+)
+
+
+@callback(
     Output('displacement-content', 'style', allow_duplicate=True),
     Output('player-controls', 'style', allow_duplicate=True),
     Output('first-run', 'data', allow_duplicate=True),
     Input('is-running', 'data'),
-    Input('frame-index', 'data'),
-    State('simulation-data', 'data'),
     State('first-run', 'data'),
     prevent_initial_call=True
 )
-def update_displacement_plot(is_running, frame_idx, sim_data, is_first_run):
-    """Update displacement plot with current time marker."""
-    if sim_data is None:
-        return no_update, no_update, no_update, no_update
-    
-    result = deserialize_result(sim_data)
-    fig = create_displacement_plot(result, current_time_idx=frame_idx)
-    
+def update_controls_visibility(is_running, is_first_run):
+    """Update visibility of controls based on animation state."""
     # During first run animation: hide controls
     if is_first_run and is_running:
-        return fig, {'visibility': 'hidden', 'height': '100%'}, {'display': 'none'}, no_update
+        return {'visibility': 'hidden', 'height': '100%'}, {'display': 'none'}, no_update
     # First run just completed: show controls and set first-run to False
     elif is_first_run and not is_running:
-        return fig, {'visibility': 'visible', 'height': '100%'}, {'display': 'flex', 'alignItems': 'center', 'padding': '10px', 'marginTop': '5px'}, False
+        return {'visibility': 'visible', 'height': '100%'}, {'display': 'flex', 'alignItems': 'top', 'padding': '0px', 'marginTop': '0px'}, False
     # Subsequent runs: always show controls
     else:
-        return fig, {'visibility': 'visible', 'height': '100%'}, {'display': 'flex', 'alignItems': 'center', 'padding': '10px', 'marginTop': '5px'}, no_update
+        return {'visibility': 'visible', 'height': '100%'}, {'display': 'flex', 'alignItems': 'top', 'padding': '0px', 'marginTop': '0px'}, no_update
 
 
 # Callback for slider scrubbing - only active when paused
@@ -468,22 +554,57 @@ def on_slider_change(slider_value, sim_data, is_running):
     return slider_value
 
 
+# Callback for video speed slider change
+@callback(
+    Output('animation-duration-ms', 'data', allow_duplicate=True),
+    Output('animation-start-time', 'data', allow_duplicate=True),
+    Input('video-speed-dropdown', 'value'),
+    State('base-duration-ms', 'data'),
+    State('frame-index', 'data'),
+    State('simulation-data', 'data'),
+    State('is-running', 'data'),
+    prevent_initial_call=True
+)
+def on_speed_change(speed_factor, base_duration_ms, frame_idx, sim_data, is_running):
+    """Update animation duration when speed selector changes."""
+    if base_duration_ms is None or speed_factor is None:
+        return no_update, no_update
+    
+    # Calculate new duration based on speed factor
+    new_duration_ms = base_duration_ms / speed_factor
+    
+    # If animation is running, adjust start_time to maintain current frame position
+    if is_running and sim_data is not None:
+        num_frames = len(sim_data['time'])
+        if num_frames > 1:
+            # Calculate current progress and set start_time accordingly
+            progress = frame_idx / (num_frames - 1)
+            elapsed = progress * new_duration_ms
+            import time
+            new_start_time = int(time.time() * 1000) - elapsed
+            return new_duration_ms, new_start_time
+    
+    return new_duration_ms, no_update
+
+
 # Callback for play/pause button
 @callback(
     Output('is-running', 'data', allow_duplicate=True),
     Output('animation-interval', 'disabled', allow_duplicate=True),
     Output('play-pause-button', 'children'),
     Output('frame-index', 'data', allow_duplicate=True),
+    Output('animation-start-time', 'data', allow_duplicate=True),
     Input('play-pause-button', 'n_clicks'),
     State('is-running', 'data'),
     State('simulation-data', 'data'),
     State('frame-index', 'data'),
+    State('animation-duration-ms', 'data'),
     prevent_initial_call=True
 )
-def toggle_play_pause(n_clicks, is_running, sim_data, frame_idx):
+def toggle_play_pause(n_clicks, is_running, sim_data, frame_idx, duration_ms):
     """Toggle play/pause state."""
     if n_clicks is None or sim_data is None:
-        return no_update, no_update, no_update, no_update
+        return no_update, no_update, no_update, no_update, no_update
     
     num_frames = len(sim_data['time'])
     
@@ -491,13 +612,19 @@ def toggle_play_pause(n_clicks, is_running, sim_data, frame_idx):
     if not is_running:
         # If at end, restart from beginning
         if frame_idx >= num_frames - 1:
-            return True, False, '⏸', 0
+            # Restart: reset frame to 0 and set start_time to -1 to initialize
+            return True, False, '⏸', 0, -1
         else:
-            # Resume from current position
-            return True, False, '⏸', no_update
+            # Resume from current position: calculate start_time to match current frame
+            # We need to set start_time such that elapsed time corresponds to current frame
+            progress = frame_idx / (num_frames - 1)
+            elapsed = progress * duration_ms
+            import time
+            start_time = int(time.time() * 1000) - elapsed
+            return True, False, '⏸', no_update, start_time
     else:
         # Pause
-        return False, True, '▶', no_update
+        return False, True, '▶', no_update, no_update
 
 
 # Callback to update button when animation completes

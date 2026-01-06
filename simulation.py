@@ -96,11 +96,9 @@ def run_simulation(params: SimulationParams) -> SimulationResult:
     # Simulation Extent
     xF = 6.0  # Fixed distance to cover in meters
     
-    # Time parameters
-    playback_speed = .5  # Playback speed multiplier (0.5 = 2x slow-mo)
+    # Time parameters - fixed number of points for all speeds
     tF = xF / vel        # Time required to cover xF at given speed
-    fR = 20 / playback_speed  # Target 20 fps for mobile performance
-    num_frames = int(tF * fR)
+    num_frames = 150     # Fixed number of frames for smooth animation at all speeds
     time = np.linspace(0, tF, num_frames)
     
     # Generate road profile

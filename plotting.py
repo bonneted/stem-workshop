@@ -146,12 +146,33 @@ def create_animation_frame(result: SimulationResult, frame_idx: int) -> go.Figur
     
     fig = go.Figure()
     
-    # Road profile
-    road_x_extended = np.concatenate([[-10], result.road_x])
-    road_z_extended = np.concatenate([[0], result.road_z])
+    # Road profile - OPTIMIZATION: Only render visible section
+    # Window is x_inst +/- l_win/2. Add buffer.
+    x_min, x_max = x_inst - l_win, x_inst + l_win
+    
+    # Filter points within window
+    road_x_extended = np.concatenate([[-10], result.road_x, [100]]) # Add bounds
+    road_z_extended = np.concatenate([[0], result.road_z, [0]])
+    
+    mask = (road_x_extended >= x_min) & (road_x_extended <= x_max)
+    
+    # Add one point on each side to ensure continuity
+    if np.any(mask):
+        idx_first = np.argmax(mask)
+        idx_last = len(mask) - 1 - np.argmax(mask[::-1])
+        idx_start = max(0, idx_first - 1)
+        idx_end = min(len(road_x_extended), idx_last + 2)
+        
+        road_x_view = road_x_extended[idx_start:idx_end]
+        road_z_view = road_z_extended[idx_start:idx_end]
+    else:
+        # Fallback if out of bounds (shouldn't happen with padding)
+        road_x_view = [x_min, x_max]
+        road_z_view = [0, 0]
+
     fig.add_trace(go.Scatter(
-        x=road_x_extended,
-        y=road_z_extended,
+        x=road_x_view,
+        y=road_z_view,
         mode='lines',
         line=dict(color='black', width=3),
         name='Road',

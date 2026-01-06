@@ -223,7 +223,7 @@ app.layout = html.Div([
                     html.Button(
                         '▶',
                         id='play-pause-button',
-                        style={'width': '40px', 'minWidth': '40px', 'height': '40px', 'fontSize': '18px', 'marginRight': '10px', 'cursor': 'pointer', 'borderRadius': '8px', 'border': '1px solid #ccc', 'background': 'white', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'center'}
+                        style={'width': '40px', 'minWidth': '40px', 'height': '40px', 'fontSize': '18px', 'marginRight': '0px', 'cursor': 'pointer', 'borderRadius': '8px', 'border': '1px solid #ccc', 'background': 'white', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'center'}
                     ),
                     html.Div([
                         dcc.Slider(
@@ -236,7 +236,7 @@ app.layout = html.Div([
                             tooltip={'placement': 'bottom', 'always_visible': False},
                             updatemode='drag'
                         )
-                    ], style={'flex': '1', 'minWidth': '0', 'paddingTop': '15px'})
+                    ], style={'flex': '1', 'minWidth': '0', 'paddingTop': '20px'})
                 ], id='player-controls', style={'display': 'none'})
             ], className='plot-panel'),
             

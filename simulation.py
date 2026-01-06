@@ -94,11 +94,11 @@ def run_simulation(params: SimulationParams) -> SimulationResult:
     a = 0.8     # Mass width
     
     # Time parameters
-    playback_speed = 0.2
+    playback_speed = .5  # Real-time playback
     tF = 2.0  # Final time
-    fR = 30 / playback_speed  # Frame rate
+    fR = 30 / playback_speed  # Target 30 fps for smooth animation
     dt = 1 / fR
-    num_frames = int(tF * fR)
+    num_frames = int(tF * fR)  # ~60 frames total
     time = np.linspace(0, tF, num_frames)
     
     # Generate road profile

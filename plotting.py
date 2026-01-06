@@ -265,7 +265,7 @@ def create_animation_frame(result: SimulationResult, frame_idx: int) -> go.Figur
         showlegend=False
     ))
     
-    # Layout
+    # Layout - use uirevision to prevent full redraws
     fig.update_layout(
         title=f't = {result.time[i]:.2f} s',
         xaxis=dict(
@@ -281,7 +281,8 @@ def create_animation_frame(result: SimulationResult, frame_idx: int) -> go.Figur
         showlegend=False,
         margin=dict(l=50, r=50, t=50, b=50),
         plot_bgcolor='white',
-        height=500
+        height=500,
+        uirevision='constant'  # Preserves UI state between updates
     )
     
     fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')

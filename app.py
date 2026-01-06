@@ -21,8 +21,8 @@ app.title = "Quarter Car Model"
 # Expose the Flask server for gunicorn
 server = app.server
 
-# Animation interval in milliseconds
-ANIMATION_INTERVAL_MS = 50
+# Animation interval in milliseconds (33ms ≈ 30fps)
+ANIMATION_INTERVAL_MS = 33
 
 # Custom CSS styles
 styles = {

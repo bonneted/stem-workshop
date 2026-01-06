@@ -142,7 +142,7 @@ def create_animation_frame(result: SimulationResult, frame_idx: int) -> go.Figur
     """
     i = frame_idx
     x_inst = result.lon[i]
-    l_win = 2.2
+    l_win = 2  # Window length
     
     fig = go.Figure()
     
@@ -309,12 +309,13 @@ def create_animation_frame(result: SimulationResult, frame_idx: int) -> go.Figur
     return fig
 
 
-def create_displacement_plot(result: SimulationResult) -> go.Figure:
+def create_displacement_plot(result: SimulationResult, current_time_idx: int | None = None) -> go.Figure:
     """
     Create the displacement vs time plot.
     
     Args:
         result: Simulation result data.
+        current_time_idx: Index of current time to show marker (optional).
         
     Returns:
         Plotly Figure object.
@@ -337,6 +338,32 @@ def create_displacement_plot(result: SimulationResult) -> go.Figure:
         line=dict(width=2, color='rgb(44, 160, 196)')
     ))
     
+    # Add current time marker if index provided
+    if current_time_idx is not None and 0 <= current_time_idx < len(result.time):
+        current_time = result.time[current_time_idx]
+        current_z_s = result.z_s[current_time_idx]
+        current_z_u = result.z_u[current_time_idx]
+        
+        # Marker for sprung mass
+        fig.add_trace(go.Scatter(
+            x=[current_time],
+            y=[current_z_s],
+            mode='markers',
+            marker=dict(color='black', size=12, symbol='circle'),
+            name='Current (sprung)',
+            showlegend=False
+        ))
+        
+        # Marker for unsprung mass
+        fig.add_trace(go.Scatter(
+            x=[current_time],
+            y=[current_z_u],
+            mode='markers',
+            marker=dict(color='black', size=12, symbol='circle'),
+            name='Current (unsprung)',
+            showlegend=False
+        ))
+    
     fig.update_layout(
         title='Vertical Displacement',
         xaxis_title='Time [s]',
@@ -344,7 +371,8 @@ def create_displacement_plot(result: SimulationResult) -> go.Figure:
         legend=dict(x=0.7, y=0.5),
         margin=dict(l=50, r=50, t=50, b=50),
         plot_bgcolor='white',
-        height=500
+        height=500,
+        uirevision='displacement'  # Preserve zoom/pan state
     )
     
     fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')

@@ -114,6 +114,7 @@ app.layout = html.Div([
     dcc.Store(id='simulation-data'),
     dcc.Store(id='frame-index', data=0),
     dcc.Store(id='is-running', data=False),
+    dcc.Store(id='first-run', data=True),  # Track if this is the first simulation run
     
     # Animation frames store
     dcc.Store(id='animation-frames'),
@@ -211,12 +212,32 @@ app.layout = html.Div([
                     id="loading-animation",
                     type="default",
                     children=[
-                        dcc.Graph(id='animation-graph', style={'height': '100%'}, config={'displayModeBar': False}),
+                        dcc.Graph(id='animation-graph', style={'height': 'calc(100% - 60px)'}, config={'displayModeBar': False}),
                         html.Div(id='loading-output', style={'display': 'none'}) # Dummy output to trigger loader
                     ],
                     overlay_style={"visibility":"visible", "opacity": .5, "backgroundColor": "white"},
                     custom_spinner=html.H2(["Computing Simulation...", html.Br(), "Please Wait"], style={'marginTop': '100px'})
-                )
+                ),
+                # Player controls (hidden until animation completes)
+                html.Div([
+                    html.Button(
+                        '▶',
+                        id='play-pause-button',
+                        style={'width': '40px', 'minWidth': '40px', 'height': '40px', 'fontSize': '18px', 'marginRight': '10px', 'cursor': 'pointer', 'borderRadius': '8px', 'border': '1px solid #ccc', 'background': 'white', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'center'}
+                    ),
+                    html.Div([
+                        dcc.Slider(
+                            id='time-slider',
+                            min=0,
+                            max=100,
+                            step=1,
+                            value=0,
+                            marks=None,
+                            tooltip={'placement': 'bottom', 'always_visible': False},
+                            updatemode='drag'
+                        )
+                    ], style={'flex': '1', 'minWidth': '0', 'paddingTop': '15px'})
+                ], id='player-controls', style={'display': 'none'})
             ], className='plot-panel'),
             
             # Displacement plot
@@ -279,17 +300,22 @@ def deserialize_result(data: dict) -> SimulationResult:
     Output('status-display', 'children'),
     Output('loading-output', 'children'),
     Output('displacement-content', 'style'),
+    Output('time-slider', 'max'),
+    Output('time-slider', 'value', allow_duplicate=True),
+    Output('player-controls', 'style'),
+    Output('first-run', 'data'),
     Input('start-button', 'n_clicks'),
     State('slider-ks', 'value'),
     State('slider-cs', 'value'),
     State('slider-vel', 'value'),
     State('slider-kt', 'value'),
+    State('first-run', 'data'),
     prevent_initial_call=True
 )
-def start_simulation(n_clicks, ks, cs, vel, kt):
+def start_simulation(n_clicks, ks, cs, vel, kt, is_first_run):
     """Handle start button click - run simulation and pre-compute frames."""
     if n_clicks is None:
-        return no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update
+        return no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update
     
     # Create simulation parameters
     params = SimulationParams(
@@ -321,33 +347,47 @@ def start_simulation(n_clicks, ks, cs, vel, kt):
     
     status = f"Running simulation... Ks={ks}, Cs={cs}, Kt={kt}, v={vel}"
     
-    # Start: Hide displacement content using visibility: hidden (keeps layout space)
-    return data, frames, 0, True, False, status, "loaded", {'visibility': 'hidden', 'height': '100%'}
+    # On first run: Hide displacement and player controls during initial animation
+    # On subsequent runs: Keep them visible
+    # Note: first-run stays True until animation completes
+    if is_first_run:
+        return (data, frames, 0, True, False, status, "loaded", 
+                {'visibility': 'hidden', 'height': '100%'}, 
+                num_frames - 1, 0,
+                {'display': 'none'},
+                True)  # Keep first-run as True until animation completes
+    else:
+        return (data, frames, 0, True, False, status, "loaded", 
+                {'visibility': 'visible', 'height': '100%'}, 
+                num_frames - 1, 0,
+                {'display': 'flex', 'alignItems': 'center', 'padding': '10px', 'marginTop': '5px'},
+                False)
 
 
 # Clientside callback for frame index advancement (no server round-trip!)
 app.clientside_callback(
     """
     function(n_intervals, current_frame, sim_data, is_running) {
-        // Return [frame_index, is_running, interval_disabled]
+        // Return [frame_index, is_running, interval_disabled, slider_value]
         if (!is_running || !sim_data) {
-            return [window.dash_clientside.no_update, window.dash_clientside.no_update, window.dash_clientside.no_update];
+            return [window.dash_clientside.no_update, window.dash_clientside.no_update, window.dash_clientside.no_update, window.dash_clientside.no_update];
         }
         
         var num_frames = sim_data.time.length;
         var next_frame = current_frame + 1;
         
         if (next_frame >= num_frames) {
-            // Animation complete
-            return [num_frames - 1, false, true];
+            // Animation complete - stop and stay at last frame
+            return [num_frames - 1, false, true, num_frames - 1];
         }
         
-        return [next_frame, true, false];
+        return [next_frame, true, false, next_frame];
     }
     """,
     Output('frame-index', 'data'),
     Output('is-running', 'data'),
     Output('animation-interval', 'disabled'),
+    Output('time-slider', 'value'),
     Input('animation-interval', 'n_intervals'),
     State('frame-index', 'data'),
     State('simulation-data', 'data'),
@@ -370,7 +410,7 @@ app.clientside_callback(
             'layout': {
                 'title': frame.layout.title,
                 'xaxis': frame.layout.xaxis,
-                'yaxis': {'range': [-0.1, 2.1], 'title': 'z [m]'},
+                'yaxis': {'range': [-0.1, 1.5], 'title': 'z [m]'},
                 'margin': {'l': 50, 'r': 50, 't': 50, 'b': 50},
                 'height': 500,
                 'uirevision': 'constant'
@@ -387,22 +427,99 @@ app.clientside_callback(
 @callback(
     Output('displacement-graph', 'figure'),
     Output('displacement-content', 'style', allow_duplicate=True),
+    Output('player-controls', 'style', allow_duplicate=True),
+    Output('first-run', 'data', allow_duplicate=True),
     Input('is-running', 'data'),
+    Input('frame-index', 'data'),
     State('simulation-data', 'data'),
+    State('first-run', 'data'),
     prevent_initial_call=True
 )
-def update_displacement_plot(is_running, sim_data):
-    """Update displacement plot ONLY when animation completes."""
-    if is_running or sim_data is None:
-        return no_update, no_update
+def update_displacement_plot(is_running, frame_idx, sim_data, is_first_run):
+    """Update displacement plot with current time marker."""
+    if sim_data is None:
+        return no_update, no_update, no_update, no_update
     
-    # Show displacement plot once animation is done
     result = deserialize_result(sim_data)
-    fig = create_displacement_plot(result)
+    fig = create_displacement_plot(result, current_time_idx=frame_idx)
     
-    return fig, {'visibility': 'visible', 'height': '100%'}
+    # During first run animation: hide controls
+    if is_first_run and is_running:
+        return fig, {'visibility': 'hidden', 'height': '100%'}, {'display': 'none'}, no_update
+    # First run just completed: show controls and set first-run to False
+    elif is_first_run and not is_running:
+        return fig, {'visibility': 'visible', 'height': '100%'}, {'display': 'flex', 'alignItems': 'center', 'padding': '10px', 'marginTop': '5px'}, False
+    # Subsequent runs: always show controls
+    else:
+        return fig, {'visibility': 'visible', 'height': '100%'}, {'display': 'flex', 'alignItems': 'center', 'padding': '10px', 'marginTop': '5px'}, no_update
+
+
+# Callback for slider scrubbing - only active when paused
+@callback(
+    Output('frame-index', 'data', allow_duplicate=True),
+    Input('time-slider', 'value'),
+    State('simulation-data', 'data'),
+    State('is-running', 'data'),
+    prevent_initial_call=True
+)
+def on_slider_change(slider_value, sim_data, is_running):
+    """Handle slider scrubbing - only update frame when paused."""
+    if sim_data is None or slider_value is None:
+        return no_update
+    
+    # Only respond to slider when animation is paused
+    # When running, ignore slider changes (they come from the interval sync)
+    if is_running:
+        return no_update
+    
+    # Animation is paused - user is scrubbing, update the frame
+    return slider_value
+
+
+# Callback for play/pause button
+@callback(
+    Output('is-running', 'data', allow_duplicate=True),
+    Output('animation-interval', 'disabled', allow_duplicate=True),
+    Output('play-pause-button', 'children'),
+    Output('frame-index', 'data', allow_duplicate=True),
+    Input('play-pause-button', 'n_clicks'),
+    State('is-running', 'data'),
+    State('simulation-data', 'data'),
+    State('frame-index', 'data'),
+    prevent_initial_call=True
+)
+def toggle_play_pause(n_clicks, is_running, sim_data, frame_idx):
+    """Toggle play/pause state."""
+    if n_clicks is None or sim_data is None:
+        return no_update, no_update, no_update, no_update
+    
+    num_frames = len(sim_data['time'])
+    
+    # If currently not running
+    if not is_running:
+        # If at end, restart from beginning
+        if frame_idx >= num_frames - 1:
+            return True, False, '⏸', 0
+        else:
+            # Resume from current position
+            return True, False, '⏸', no_update
+    else:
+        # Pause
+        return False, True, '▶', no_update
+
+
+# Callback to update button when animation completes
+@callback(
+    Output('play-pause-button', 'children', allow_duplicate=True),
+    Input('is-running', 'data'),
+    prevent_initial_call=True
+)
+def update_button_on_animation_end(is_running):
+    """Update button text when animation ends."""
+    # When animation stops, show play button
+    return '▶' if not is_running else '⏸'
 
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8050))
-    app.run(debug=True, host='0.0.0.0', port=port)
+    app.run(debug=True, host='127.0.0.1', port=port)

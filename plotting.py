@@ -341,7 +341,7 @@ def create_displacement_plot(result: SimulationResult) -> go.Figure:
         title='Vertical Displacement',
         xaxis_title='Time [s]',
         yaxis_title='z [m]',
-        legend=dict(x=0.7, y=0.95),
+        legend=dict(x=0.7, y=0.5),
         margin=dict(l=50, r=50, t=50, b=50),
         plot_bgcolor='white',
         height=500

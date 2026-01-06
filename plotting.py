@@ -50,14 +50,13 @@ def create_spring_trace(
     Returns:
         Tuple of (x_coords, z_coords) for the spring.
     """
-    rod_pct = 0.11
-    spring_pct = 1/3
+    rod_pct = 0.15
+    spring_pct = 0.5
     
     L = (z_top - z_bottom) - 2 * rod_pct * L0
     
     x_coords = [
         x_center, x_center,
-        x_center + width, x_center - width,
         x_center + width, x_center - width,
         x_center + width, x_center - width,
         x_center, x_center
@@ -71,9 +70,7 @@ def create_spring_trace(
         z_bottom + rod_pct * L0 + spring_pct * L,
         z_bottom + rod_pct * L0 + 2 * spring_pct * L,
         z_bottom + rod_pct * L0 + 2 * spring_pct * L,
-        z_bottom + rod_pct * L0 + 3 * spring_pct * L,
-        z_bottom + rod_pct * L0 + 3 * spring_pct * L,
-        z_bottom + 2 * rod_pct * L0 + 3 * spring_pct * L
+        z_bottom + 2 * rod_pct * L0 + 2 * spring_pct * L
     ]
     
     return x_coords, z_coords

@@ -115,6 +115,9 @@ app.layout = html.Div([
     dcc.Store(id='frame-index', data=0),
     dcc.Store(id='is-running', data=False),
     
+    # Animation frames store
+    dcc.Store(id='animation-frames'),
+    
     # Animation interval component
     dcc.Interval(
         id='animation-interval',
@@ -204,13 +207,24 @@ app.layout = html.Div([
         html.Div([
             # Animation plot
             html.Div([
-                dcc.Graph(id='animation-graph', style={'height': '100%'}, config={'displayModeBar': False})
+                dcc.Loading(
+                    id="loading-animation",
+                    type="default",
+                    children=[
+                        dcc.Graph(id='animation-graph', style={'height': '100%'}, config={'displayModeBar': False}),
+                        html.Div(id='loading-output', style={'display': 'none'}) # Dummy output to trigger loader
+                    ],
+                    overlay_style={"visibility":"visible", "opacity": .5, "backgroundColor": "white"},
+                    custom_spinner=html.H2(["Computing Simulation...", html.Br(), "Please Wait"], style={'marginTop': '100px'})
+                )
             ], className='plot-panel'),
             
             # Displacement plot
             html.Div([
-                dcc.Graph(id='displacement-graph', style={'height': '100%'}, config={'displayModeBar': False})
-            ], className='plot-panel')
+                html.Div([
+                    dcc.Graph(id='displacement-graph', style={'height': '100%'}, config={'displayModeBar': False})
+                ], id='displacement-content', style={'height': '100%'})
+            ], id='displacement-container', className='plot-panel')
         ], className='plot-container')
         
     ], className='app-container')
@@ -258,10 +272,13 @@ def deserialize_result(data: dict) -> SimulationResult:
 
 @callback(
     Output('simulation-data', 'data'),
+    Output('animation-frames', 'data'),
     Output('frame-index', 'data', allow_duplicate=True),
     Output('is-running', 'data', allow_duplicate=True),
     Output('animation-interval', 'disabled', allow_duplicate=True),
     Output('status-display', 'children'),
+    Output('loading-output', 'children'),
+    Output('displacement-content', 'style', allow_duplicate=True),
     Input('start-button', 'n_clicks'),
     State('slider-ks', 'value'),
     State('slider-cs', 'value'),
@@ -270,9 +287,9 @@ def deserialize_result(data: dict) -> SimulationResult:
     prevent_initial_call=True
 )
 def start_simulation(n_clicks, ks, cs, vel, kt):
-    """Handle start button click - run simulation and start animation."""
+    """Handle start button click - run simulation and pre-compute frames."""
     if n_clicks is None:
-        return no_update, no_update, no_update, no_update, no_update
+        return no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update
     
     # Create simulation parameters
     params = SimulationParams(
@@ -288,9 +305,24 @@ def start_simulation(n_clicks, ks, cs, vel, kt):
     # Serialize result for storage
     data = serialize_result(result)
     
+    # Pre-compute all animation frames
+    # We extract the updating parts of the figure for each frame
+    frames = []
+    num_frames = len(result.time)
+    
+    for i in range(num_frames):
+        fig = create_animation_frame(result, i)
+        frame_data = json.loads(fig.to_json())['data']
+        layout_update = {
+            'title': fig.layout.title.text,
+            'xaxis': {'range': fig.layout.xaxis.range}
+        }
+        frames.append({'data': frame_data, 'layout': layout_update})
+    
     status = f"Running simulation... Ks={ks}, Cs={cs}, Kt={kt}, v={vel}"
     
-    return data, 0, True, False, status
+    # Start: Hide displacement content using visibility: hidden (keeps layout space)
+    return data, frames, 0, True, False, status, "loaded", {'visibility': 'hidden', 'height': '100%'}
 
 
 @callback(
@@ -318,35 +350,52 @@ def update_frame_index(n_intervals, current_frame, sim_data, is_running):
     return next_frame, True, False
 
 
-@callback(
+# Clientside callback for smooth animation
+app.clientside_callback(
+    """
+    function(frame_idx, frames_data) {
+        if (!frames_data || frame_idx >= frames_data.length) {
+            return window.dash_clientside.no_update;
+        }
+        
+        var frame = frames_data[frame_idx];
+        
+        return {
+            'data': frame.data,
+            'layout': {
+                'title': frame.layout.title,
+                'xaxis': frame.layout.xaxis,
+                'yaxis': {'range': [-0.1, 2.1], 'title': 'z [m]'},
+                'margin': {'l': 50, 'r': 50, 't': 50, 'b': 50},
+                'height': 500,
+                'uirevision': 'constant'
+            }
+        };
+    }
+    """,
     Output('animation-graph', 'figure'),
     Input('frame-index', 'data'),
-    State('simulation-data', 'data'),
-    prevent_initial_call=True
+    State('animation-frames', 'data')
 )
-def update_animation(frame_idx, sim_data):
-    """Update animation graph for current frame."""
-    if sim_data is None:
-        return go.Figure()
-    
-    result = deserialize_result(sim_data)
-    return create_animation_frame(result, frame_idx)
 
 
 @callback(
     Output('displacement-graph', 'figure'),
+    Output('displacement-content', 'style'),
     Input('is-running', 'data'),
     State('simulation-data', 'data'),
     prevent_initial_call=True
 )
 def update_displacement_plot(is_running, sim_data):
-    """Update displacement plot when animation completes."""
-    if sim_data is None:
-        return go.Figure()
+    """Update displacement plot ONLY when animation completes."""
+    if is_running or sim_data is None:
+        return no_update, no_update
     
-    # Show displacement plot once animation is done or during animation
+    # Show displacement plot once animation is done
     result = deserialize_result(sim_data)
-    return create_displacement_plot(result)
+    fig = create_displacement_plot(result)
+    
+    return fig, {'visibility': 'visible', 'height': '100%'}
 
 
 if __name__ == '__main__':

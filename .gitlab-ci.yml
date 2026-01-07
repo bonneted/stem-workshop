@@ -21,7 +21,7 @@ include:
     inputs:
       path: "deploy/"
       environment-url: "https://lmsd-%{environment_name}.eduapps.set.kuleuven.be"
-      review-enabled: true
+      review-enabled: false
       prod-enabled: true
       prod-deploy-strategy: "auto"
       create-namespace-enabled: true

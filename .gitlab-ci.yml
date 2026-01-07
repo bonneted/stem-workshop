@@ -1,0 +1,27 @@
+# Created with https://to-be-continuous.pages.gitlab.kuleuven.be/kicker
+include:
+  - component: "$CI_SERVER_FQDN/to-be-continuous/python/gitlab-ci-python@9"
+    # Ref: https://to-be-continuous.pages.gitlab.kuleuven.be/doc/ref/python/
+    inputs:
+      image: "ghcr.io/astral-sh/uv:python3.12-trixie"
+      pytest-enabled: false
+      sbom-disabled: true
+
+  - component: "$CI_SERVER_FQDN/to-be-continuous/cnb/gitlab-ci-cnb@4"
+    # Ref: https://to-be-continuous.pages.gitlab.kuleuven.be/doc/ref/cnb/
+    inputs:
+      builder-image: "heroku/builder:24"
+      platform-api: "0.14"
+      release-image: "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"      
+      trivy-disabled: true
+      prod-publish-strategy: "auto"
+
+  - component: "$CI_SERVER_FQDN/to-be-continuous/helmfile/gitlab-ci-helmfile@4"
+    # Ref: https://to-be-continuous.pages.gitlab.kuleuven.be/doc/ref/helmfile/
+    inputs:
+      path: "deploy/"
+      environment-url: "https://lmsd-%{environment_name}.eduapps.set.kuleuven.be"
+      review-enabled: true
+      prod-enabled: true
+      prod-deploy-strategy: "auto"
+      create-namespace-enabled: true

@@ -1,0 +1,29 @@
+# Initialize from CI/CD environment variables
+{{- $kube_namespace := env "kube_namespace" | default "stem-workshop-31344-production" -}}
+{{- $ingress_base_domain := env "KUBE_INGRESS_BASE_DOMAIN" |
+  default "eduapps.set.kuleuven.be" -}}
+{{- $environment_name := env "environment_name" | default "stem-workshop" -}}
+{{- $environment_hostname := env "environment_hostname" |
+  default (printf "%s.%s" $environment_name $ingress_base_domain ) -}}
+{{- $environment_url := env "environment_url" |
+  default (printf "https://%s" $environment_hostname) -}}
+{{- $app_image := env "cnb_image" |
+  default "registry.gitlab.kuleuven.be/r2d/researchers/damien/stem-workshop:master" -}}
+{{- $app_image_tag := env "cnb_tag" | default "master" -}}
+{{- $app_image_digest := env "cnb_digest" | default "" -}}
+
+# Define release name and namespace for current environment
+releaseName: {{ $environment_name }}
+releaseNamespace: {{ $kube_namespace }}
+
+# Define ingress URL and hostname for current environment
+ingress:
+  url: {{ $environment_url }}
+  hostname: {{ $environment_hostname }}
+
+# Define Docker image for current environment
+image:
+  registry: {{ regexReplaceAll "^([^/]+)\\/([^:^@]+)(@|:|)(.*)$" $app_image "${1}" }}
+  repository: {{ regexReplaceAll "^([^/]+)\\/([^:^@]+)(@|:|)(.*)$" $app_image "${2}" }}
+  digest: "{{ $app_image_digest }}"
+  tag: "{{ $app_image_tag }}"

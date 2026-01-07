@@ -24,4 +24,3 @@ include:
       review-enabled: false
       prod-enabled: true
       prod-deploy-strategy: "auto"
-      create-namespace-enabled: true

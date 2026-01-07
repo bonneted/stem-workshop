@@ -18,18 +18,18 @@ A Python web application that simulates a quarter car suspension model driving o
 
 ### Prerequisites
 
-- Python 3.10+
+- [uv](https://docs.astral.sh/uv/) for package and project management
 
 ### Installation
 
 ```bash
-pip install -r requirements.txt
+uv sync
 ```
 
 ### Running Locally
 
 ```bash
-python app.py
+uv run app.py
 ```
 
 Then open http://localhost:8050 in your browser.

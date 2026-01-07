@@ -1,0 +1,71 @@
+environments:
+  default: &default
+    missingFileHandler: Info
+    values:
+      - ./env/default.yaml.gotmpl
+      - ./env/{{ .Environment.Name }}.yaml
+  review:
+    <<: *default
+  staging:
+    <<: *default
+  production:
+    <<: *default
+---
+helmDefaults:
+  atomic: true
+  wait: true
+  createNamespace: false
+
+repositories:
+  - name: setit
+    url: https://gitlab.kuleuven.be/api/v4/projects/6776/packages/helm/stable
+
+releases:
+- name: {{ .Values.releaseName }}
+  chart: setit/webapp
+  version: ^1.0.0
+  namespace: {{ .Values.releaseNamespace }}
+  values:
+  - image:
+      registry: {{ .Values.image.registry }}
+      repository: {{ .Values.image.repository }}
+      {{- if .Values.image.digest }}
+      digest: "{{ .Values.image.digest }}"
+      {{- else }}
+      tag: "{{ .Values.image.tag }}"
+      {{- end }}
+      pullSecrets:
+      - gitlab-registry
+
+    containerPorts:
+      http: 8050
+
+    service:
+      type: ClusterIP
+      ports:
+        http: 8050
+
+    extraEnvVars:
+      - name: PORT
+        value: "8050"
+
+    ## livenessProbe.path
+    ## The http path to use to check liveness/healthiness of the app
+    livenessProbe:
+      path: /
+
+    ingress:
+      enabled: true
+      hostname: {{ .Values.ingress.hostname }}
+      forceSSLRedirect: true
+
+    serviceAccount:
+      create: false
+
+    containerSecurityContext:
+      runAsUser: 1000
+
+    podSecurityContext:
+      fsGroup: 1000
+
+    replicaCount: 1

@@ -15,6 +15,7 @@ include:
       release-image: "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"      
       trivy-disabled: true
       prod-publish-strategy: "auto"
+      source-date-epoch-enabled: true
 
   - component: "$CI_SERVER_FQDN/to-be-continuous/helmfile/gitlab-ci-helmfile@4"
     # Ref: https://to-be-continuous.pages.gitlab.kuleuven.be/doc/ref/helmfile/

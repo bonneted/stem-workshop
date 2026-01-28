@@ -52,7 +52,7 @@ def generate_road_profile() -> Tuple[np.ndarray, np.ndarray]:
     z1 = np.zeros_like(x1)
     
     # Bump (semicircle)
-    R = 0.10  # Bump radius
+    R = 0.16  # Bump radius
     th = np.linspace(0, np.pi, 50)
     x2 = -R * np.cos(th) + 1.1 + R
     z2 = R * np.sin(th)
